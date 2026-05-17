@@ -111,9 +111,7 @@ if (!is_null($data1)){
 		</div>
 		
 		<div>
-		<?php
-			echo Form::open('bas/auth');
-		?>
+
 			<h2>Таблица состояния устройств на <?php echo date ('d.m.Y H:i:s', time());?></h2>
 			<h3>Всего устройств <?php echo count($deviceList);
 			$onLineCount=0;
@@ -217,12 +215,7 @@ if (!is_null($data1)){
 				?>
 				</tbody>
 			</table>
-			
-			<?php
-			
-			echo Form::close();
-			
-	?>
+
 		</div>
 	
 </div>

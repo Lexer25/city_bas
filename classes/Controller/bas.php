@@ -396,7 +396,8 @@ class Controller_bas extends Controller_Template {
 								
 							
 							Session::instance()->set('alertOk', $data->errors('validation'));
-							$this->redirect('/?id_dev=' . $id_dev); // Перенаправление на страницу успешного обновления
+							//$this->redirect('/?id_dev=' . $id_dev); // Перенаправление на страницу успешного обновления
+							$this->redirect('bas'); // Перенаправление на страницу успешного обновления
 								
 						}
 						else{
@@ -406,7 +407,7 @@ class Controller_bas extends Controller_Template {
 					} else {
 						//echo Debug::vars('96 ERR', $data->errors('validation')); exit;
 						Session::instance()->set('alertErr', $data->errors('Valid_mess'));
-						$this->redirect('/');
+						$this->redirect('bas');
 						
 					}
 						
@@ -478,7 +479,8 @@ class Controller_bas extends Controller_Template {
 						if(Model::factory('bas')->changeConfigIP($data) == 0){
 							$id_dev = $data['id_dev'];
 							Session::instance()->set('alertOk', $data->errors('validation'));
-							$this->redirect('bas/?id_dev=' . $id_dev); // Перенаправление на страницу успешного обновленияы
+							//$this->redirect('bas/?id_dev=' . $id_dev); // Перенаправление на страницу успешного обновленияы
+							$this->redirect('bas'); // Перенаправление на страницу успешного обновленияы
 						}
 						else{
 							//Session::instance()->set('alertIPErr', $data = 'Ошибка Sql запроса');

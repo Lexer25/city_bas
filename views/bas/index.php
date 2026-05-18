@@ -2,6 +2,7 @@
 //12.03.2025.
 //Добавлен вывод состоняи ONLINE.
 ?>
+
 <script>
  //https://learn.javascript.ru/function-object
 $(function() {
@@ -261,7 +262,7 @@ echo '<br>';
 			 */
 			?>
 			
-			<form action="bas/control_no_model" method="post" enctype="multipart/form-data">
+			<form action="bas/update" method="post" enctype="multipart/form-data">
 					Изменения IP
 					<h4></h4>
 					<input type="input" name="new_IP" id="ipp" pattern="^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" >
@@ -279,7 +280,7 @@ echo '<br>';
 				 Пароль <input type="password" name="password" id="pass1" placeholder="Пароль">
 
 				 <input type="hidden" name="id_dev" id="id_org2" >
-				 <input type="hidden" name="todo" value="bas_changeIP2" >
+				 <input type="hidden" name="todo" value="bas_changeLogin" >
 				 <input type="submit" name="submit" value="Новый Логин и Пароль">
 				
 			</form> 

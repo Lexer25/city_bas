@@ -366,9 +366,91 @@ class Controller_bas extends Controller_Template {
 		return (date("H:i:s").' Метод action_getListCard свою работу завершил.'."\r\n\r\n");
 		
 	}
-	public function action_update() {
-		//echo Debug::vars('337', $_POST); exit;
-		$data=Validation::factory($_POST);
+	
+	/**25.02.2025 Получить список карт для записи и для удаления для указанной панели
+	*@input id_dev вызывной панели
+	*@output массив с указанием кол-ва карт для записи и для удаления
+	*/
+	public function getCardListCount($deviceList)
+	{
+		
+		$result=array();
+		foreach($deviceList as $key=>$value)
+		{
+
+		//echo Debug::vars('435', $query); exit;		
+		$result[Arr::get($value, 'ID_DEV')]['load']=$this->countHelper(Arr::get($value, 'ID_DEV'), 1);
+		$result[Arr::get($value, 'ID_DEV')]['delete']=$this->countHelper(Arr::get($value, 'ID_DEV'), 2);
+		}
+		//echo Debug::vars('435',$key, $value, $result); exit;
+		return $result;
+	}
+	
+	/**вопомогательная функция для подсчета количества карт
+	*@input - id_dev - id вызывной панели, $operation - 1 - для записи, 2 - для удаления.
+	*/
+	private function countHelper($id_dev, $operation)
+	{
+		$sql='select count(cd.id_card)from cardindev cd
+			join device d on d.id_dev=cd.id_dev
+			join device d2 on d2.id_ctrl=d.id_ctrl and d2.id_reader is null
+
+			where d2.id_dev='.$id_dev.'
+			and cd.operation='.$operation;
+		//echo Debug::vars('441', $sql); exit;	
+		$query = DB::query(Database::SELECT, $sql)
+				->execute(Database::instance('fb'))
+				->get('COUNT')
+				;
+		//		echo Debug::vars('441', $query); exit;
+		return $query;
+	}
+	
+	
+	public function action_update()// обработка действий, не требующих подключение к панелям
+	{
+		//echo Debug::vars('65', 'POST: ', $this->request->post(), 'GET: ',$this->request->query()); exit;
+			switch ($this->request->post('todo'))
+			{
+				
+				
+				case 'bas_changeIP2':// замена IP адреса
+					$data=Validation::factory($_POST);
+					$data->rule('id_dev', 'not_empty')
+						->rule('id_dev', 'digit')
+						->rule('new_IP', 'not_empty')
+						->rule('new_IP', 'IP')
+						;
+					
+					if($data->check())
+					{
+					//echo Debug::vars('93 OK', $data); exit;
+					$result=Model::factory('bas')->changeConfigIP($data);
+						if(Model::factory('bas')->changeConfigIP($data) == 0){
+							$id_dev = $data['id_dev'];
+							Session::instance()->set('alertOk', $data->errors('validation'));
+							//$this->redirect('bas/?id_dev=' . $id_dev); // Перенаправление на страницу успешного обновленияы
+							$this->redirect('bas'); // Перенаправление на страницу успешного обновленияы
+						}
+						else{
+							//Session::instance()->set('alertIPErr', $data = 'Ошибка Sql запроса');
+							Session::instance()->set('alertIPErr', $data = __('sql_err_89', array('new_ip'=>Arr::get($data,'new_IP'))));
+							$this->redirect('bas');
+						}
+					
+					} else {
+						//echo Debug::vars('96 ERR', $data); exit;
+						
+						
+						Session::instance()->set('alertErr', $data->errors('Valid_mess'));
+						
+						$this->redirect('bas');
+					}
+					$this->redirect('bas');				
+
+				break;
+			case 'bas_changeLogin':
+				$data=Validation::factory($_POST);
 					$data->rule('login', 'not_empty')
 						->rule('login', 'alpha_numeric')
 						->rule('login', 'max_length', array(':value', 10))
@@ -411,94 +493,7 @@ class Controller_bas extends Controller_Template {
 						
 					}
 						
-						
-					
-					
-		
-	}
-	
-	/**25.02.2025 Получить список карт для записи и для удаления для указанной панели
-	*@input id_dev вызывной панели
-	*@output массив с указанием кол-ва карт для записи и для удаления
-	*/
-	public function getCardListCount($deviceList)
-	{
-		
-		$result=array();
-		foreach($deviceList as $key=>$value)
-		{
-
-		//echo Debug::vars('435', $query); exit;		
-		$result[Arr::get($value, 'ID_DEV')]['load']=$this->countHelper(Arr::get($value, 'ID_DEV'), 1);
-		$result[Arr::get($value, 'ID_DEV')]['delete']=$this->countHelper(Arr::get($value, 'ID_DEV'), 2);
-		}
-		//echo Debug::vars('435',$key, $value, $result); exit;
-		return $result;
-	}
-	
-	/**вопомогательная функция для подсчета количества карт
-	*@input - id_dev - id вызывной панели, $operation - 1 - для записи, 2 - для удаления.
-	*/
-	private function countHelper($id_dev, $operation)
-	{
-		$sql='select count(cd.id_card)from cardindev cd
-			join device d on d.id_dev=cd.id_dev
-			join device d2 on d2.id_ctrl=d.id_ctrl and d2.id_reader is null
-
-			where d2.id_dev='.$id_dev.'
-			and cd.operation='.$operation;
-		//echo Debug::vars('441', $sql); exit;	
-		$query = DB::query(Database::SELECT, $sql)
-				->execute(Database::instance('fb'))
-				->get('COUNT')
-				;
-		//		echo Debug::vars('441', $query); exit;
-		return $query;
-	}
-	
-	
-	public function action_control_no_model()// обработка действий, не требующих подключение к панелям
-	{
-		//echo Debug::vars('65', 'POST: ', $this->request->post(), 'GET: ',$this->request->query()); exit;
-			switch ($this->request->post('todo'))
-			{
 				
-				
-				case 'bas_changeIP2':// замена IP адреса
-					$data=Validation::factory($_POST);
-					$data->rule('id_dev', 'not_empty')
-						->rule('id_dev', 'digit')
-						->rule('new_IP', 'not_empty')
-						->rule('new_IP', 'IP')
-						;
-					
-					if($data->check())
-					{
-					//echo Debug::vars('93 OK', $data); exit;
-					$result=Model::factory('bas')->changeConfigIP($data);
-						if(Model::factory('bas')->changeConfigIP($data) == 0){
-							$id_dev = $data['id_dev'];
-							Session::instance()->set('alertOk', $data->errors('validation'));
-							//$this->redirect('bas/?id_dev=' . $id_dev); // Перенаправление на страницу успешного обновленияы
-							$this->redirect('bas'); // Перенаправление на страницу успешного обновленияы
-						}
-						else{
-							//Session::instance()->set('alertIPErr', $data = 'Ошибка Sql запроса');
-							Session::instance()->set('alertIPErr', $data = __('sql_err_89', array('new_ip'=>Arr::get($data,'new_IP'))));
-							$this->redirect('bas');
-						}
-					
-					} else {
-						//echo Debug::vars('96 ERR', $data); exit;
-						
-						
-						Session::instance()->set('alertErr', $data->errors('Valid_mess'));
-						
-						$this->redirect('bas');
-					}
-					$this->redirect('bas');				
-
-				break;
 			}
 		
 	}

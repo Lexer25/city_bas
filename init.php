@@ -7,3 +7,27 @@ Route::set('default', '(<controller>(/<action>(/<id>)))')
 		'controller' => 'dashboard',
 		'action'     => 'index',
 	));
+	
+	
+Kohana::$config->load('menu')
+    ->set('basip', array(
+        'title' => 'basip',
+        'url' => '/parsec',
+        'icon' => 'fa-cog',
+        'order' => 200,
+        'children' => array(
+            'tasks' => array(
+                'title' => 'Контроль',
+                'url' => 'bas'
+            ),
+            'setting' => array(
+                'title' => 'Настройки',
+                'url' => 'bas'
+            ),
+			'config' => array(
+                'title' => 'Конфигурация',
+                'url' => 'bas/search'
+            )
+			
+        )
+    ));

@@ -15,6 +15,7 @@ Kohana::$config->load('menu')
         'url' => '/parsec',
         'icon' => 'fa-cog',
         'order' => 200,
+		'disabled' => true, 
         'children' => array(
             'tasks' => array(
                 'title' => 'Контроль',

@@ -12,10 +12,10 @@ Route::set('default', '(<controller>(/<action>(/<id>)))')
 Kohana::$config->load('menu')
     ->set('basip', array(
         'title' => 'basip',
-        'url' => '/parsec',
+        'url' => '/bas',
         'icon' => 'fa-cog',
         'order' => 200,
-		'disabled' => true, 
+		'disabled' => false, 
         'children' => array(
             'tasks' => array(
                 'title' => 'Контроль',

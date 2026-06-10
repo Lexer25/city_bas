@@ -284,6 +284,8 @@ echo '<br>';
 				 <input type="submit" name="submit" value="Новый Логин и Пароль">
 				
 			</form> 
+			
+			Допустимые символы A-Z a-z 0-9 !@#$%^&*()_-+=[]{};:'",.<>/?\|~)
 			</div>
 			<div class="modalm-footer">
 				<h4>Редактирование свойств панели bas-IP</h4>

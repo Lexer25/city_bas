@@ -15,7 +15,7 @@ Kohana::$config->load('menu')
         'url' => '/bas',
         'icon' => 'fa-cog',
         'order' => 200,
-		'disabled' => false, 
+		'disabled' => true, 
         'children' => array(
             'tasks' => array(
                 'title' => 'Контроль',

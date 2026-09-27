@@ -1,29 +1,15 @@
 <?php
 // MODPATH/about/init.php
-defined('BAS_VERSION') OR define('BAS_VERSION', '2.0.0');
+defined('BAS_VERSION') OR define('BAS_VERSION', '2.0.1');
 
 	
 	
 Kohana::$config->load('menu')
     ->set('basip', array(
         'title' => 'basip',
-        'url' => '/bas',
+        'url' => 'bas',
         'icon' => 'fa-cog',
         'order' => 200,
 		'disabled' => false, 
-        'children' => array(
-            'tasks' => array(
-                'title' => 'Контроль',
-                'url' => 'bas'
-            ),
-            'setting' => array(
-                'title' => 'Настройки',
-                'url' => 'bas'
-            ),
-			'config' => array(
-                'title' => 'Конфигурация',
-                'url' => 'bas/search'
-            )
-			
-        )
+
     ));

@@ -122,10 +122,9 @@ if (!is_null($data1)){
 			}?>
 			<h3>На связи <?php echo $onLineCount;?> устройств(а).</h3>
 			
-			<table id="tablesorter" class="table table-condensed tablesorter">
-			 <caption style="caption-side: top;">
-				Сводная информация о состоянии вызывных па
-			</caption>
+
+			<table id="tablesorter" class="table table-striped table-hover table-condensed tablesorter table-bordered">
+
 				<thead>
 				<tr>
 					<th><?php echo __('npp');?></th>
@@ -137,9 +136,12 @@ if (!is_null($data1)){
 					<th><?php echo __('dev_name');?></th>
 					<th><?php echo __('ip');?></th>
 					<th><?php echo __('about');?></th>
+					
+					<th><?php echo __('firmWare');?></th>
+					<th><?php echo __('authResult');?></th>
 					<th><?php echo __('lastevent');?></th>
 					<th><?php echo __('lastequest');?></th>
-					<th><?php echo __('to_do');?></th>
+					<th><?php echo __('config');?></th>
 					
 				</tr>
 				
@@ -166,7 +168,8 @@ if (!is_null($data1)){
 
 						$status='5';//красный - тревога!!! что-то не так, требуется срочное вмешательство!!!
 					}
-					
+					$about=array();
+					$about=explode(",", Arr::get($value, 'ABOUT'));	
 
 					echo '<tr class="'.Arr::get($statusColor, $status).'">';
 						echo '<td>'.++$npp. '</td>';
@@ -185,7 +188,9 @@ if (!is_null($data1)){
 						
 						echo '<td>'.iconv('windows-1251','UTF-8', Arr::get($value, 'NAME')).'</td>';
 						echo '<td>'.HTML::anchor('http://' . long2ip(Arr::get($value, 'IP')), long2ip(Arr::get($value, 'IP'))).'</td>';
-						echo '<td>'.Arr::get($value, 'ABOUT', '---').'</td>';
+						echo '<td>'.Arr::get($about, 0, '---');'</td>';
+						echo '<td>'.Arr::get($about, 2, '---');'</td>';
+						echo '<td>'.Arr::get($about, 4, '---');'</td>';
 						echo '<td>';
 							
 							echo (is_null(Arr::get($value, 'LASTEVENT')))? '-' : date ('d.m.Y H:i:s', Arr::get($value, 'LASTEVENT', 0)/1000);

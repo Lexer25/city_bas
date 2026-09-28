@@ -1,6 +1,6 @@
 <?php
 // MODPATH/about/init.php
-defined('BAS_VERSION') OR define('BAS_VERSION', '2.0.1');
+defined('BAS_VERSION') OR define('BAS_VERSION', '2.0.2');
 
 	
 	
@@ -11,5 +11,17 @@ Kohana::$config->load('menu')
         'icon' => 'fa-cog',
         'order' => 200,
 		'disabled' => false, 
+		 'children' => array(
+            'tasks' => array(
+                'title' => 'Контроль',
+                'url' => 'bas'
+            ),
+            'setting' => array(
+                'title' => 'Отладка',
+                'url' => 'bastest'
+            ),
+			
+			
+        )
 
     ));

@@ -70,6 +70,7 @@ class Model_Bas extends Model
 		if(is_null($serverList))
 		{
 			$sql='select d.id_dev, d.name, 
+				d2.id_dev as id_dev_door, d2.name AS DOOR_NAME,
 				bp.param, bp.intvalue as IP, 
 				bp2.strvalue as LASTEVENT, 
 				bp3.strvalue as ABOUT, 
@@ -84,7 +85,7 @@ class Model_Bas extends Model
                 from  servertype st
                 join servertypelist stp on stp.id_type=st.id
                 join device d on d.id_server=stp.id_server and d.id_reader is null
-                join device d2 on d2.id_ctrl=d.id_ctrl and d2.id_reader is not null
+                join device d2 on d2.id_ctrl=d.id_ctrl and d2.id_reader =0
                 left join bas_param bp on bp.id_dev=d.id_dev  and bp.param=\'IP\'
                 left join bas_param bp2 on bp2.id_dev=d.id_dev  and bp2.param=\'LASTEVENT\'
 				left join bas_param bp3 on bp3.id_dev=d.id_dev  and bp3.param=\'ABOUT\'
@@ -94,6 +95,7 @@ class Model_Bas extends Model
 				 left join cardindev cd on cd.id_dev=d2.id_dev
                 where st.sname =\'bas\'
                 group by  d.id_dev, d.name, 
+				d2.id_dev, d2.name,
                 bp.param, bp.intvalue,
                 bp2.strvalue,
                 bp3.strvalue,

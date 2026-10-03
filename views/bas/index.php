@@ -1,39 +1,38 @@
-<?php
-//12.03.2025.
-//Добавлен вывод состоняи ONLINE.
-?>
-
 <script>
- //https://learn.javascript.ru/function-object
+//https://learn.javascript.ru/function-object
 $(function() {
-	
-     $(".btn").click(
-       function() {
-         var bname = $(this).attr('org_name');
-         var bprice = $(this).attr('org_id');
-         var ip_deb = $(this).attr('ip_dev');
+	$(".btn").click(
+		function() {
+			var bname   = $(this).attr('org_name');
+			var bprice  = $(this).attr('org_id');
+			var ip_deb  = $(this).attr('ip_dev');
 
-	
-         $(".kartka h1").text(bname);
-         $(".kartka ttt").html(bprice);
-         $(".kartka  h2").html(ip_deb);
-		 
-		 document.getElementById("id_org2").value = $(this).attr('org_id');
-		 document.getElementById("id_org1").value = $(this).attr('org_id1');
-		 document.getElementById("ipp").value = $(this).attr('ip_dev');
-		 document.getElementById("login1").value = $(this).attr('login');
-		 document.getElementById("pass1").value = $(this).attr('pass');
-		 
-       });
-	
+			$(".kartka h1").text(bname);
+			$(".kartka ttt").html(bprice);
+			$(".kartka h2").html(ip_deb);
 
-   });
- 
-   	$(function() {		
-  		$("#tablesorter").tablesorter({sortList:[[0,0]]});
-  	});	
-	
- 
+			document.getElementById("id_org2").value = $(this).attr('org_id');
+			document.getElementById("id_org1").value = $(this).attr('org_id1');
+			document.getElementById("ipp").value     = $(this).attr('ip_dev');
+			document.getElementById("login1").value  = $(this).attr('login');
+			document.getElementById("pass1").value   = $(this).attr('pass');
+		}
+	);
+});
+
+$(function() {
+	// В шапке две строки: сортировка идёт только по первой (вторая - номера колонок).
+	// Колонка 0 (номер по порядку) не сортируется.
+	// theme: 'blue' обязателен - именно он вешает на таблицу класс tablesorter-blue,
+	// по которому theme.blue.min.css рисует стрелки-указатели порядка сортировки
+	// (нейтральная, вверх - по возрастанию, вниз - по убыванию).
+	$("#tablesorter").tablesorter({
+		theme: 'blue',
+		selectorHeaders: 'thead tr:first-child th',
+		sortList: [[0,0]],
+		headers: { 0: { sorter: false } }
+	});
+});
 </script>
 <?php
 $data = Session::instance()->get('alertErr', null);
@@ -134,6 +133,7 @@ if (!is_null($data1)){
 					<th><?php echo __('Для записи');?></th>
 					<th><?php echo __('Для удаления');?></th>
 					<th><?php echo __('dev_name');?></th>
+					<th><?php echo __('DOOR_NAME');?></th>
 					<th><?php echo __('ip');?></th>
 					<th><?php echo __('about');?></th>
 					
@@ -144,7 +144,12 @@ if (!is_null($data1)){
 					<th><?php echo __('config');?></th>
 					
 				</tr>
-				
+				<? // вторая строка шапки - номера колонок, начиная с 1 (9 колонок в этой таблице) ?>
+							<tr class="info" style="font-size: 10px">
+								<?php for ($col = 1; $col <= 15; $col++): ?>
+									<th class="text-center"><?php echo $col; ?></th>
+								<?php endfor; ?>
+				</tr>
 				</thead>
 				
 				<tbody>
@@ -172,7 +177,7 @@ if (!is_null($data1)){
 					$about=explode(",", Arr::get($value, 'ABOUT'));	
 
 					echo '<tr class="'.Arr::get($statusColor, $status).'">';
-						echo '<td>'.++$npp. '</td>';
+						echo '<td >'.++$npp. '</td>';
 						echo '<td>'.$status.'</td>';
 						echo '<td>'.Arr::get($value, 'ID_DEV'). '</td>';
 						echo '<td>'.(Arr::get($value, 'ONLINE')? HTML::image('static/images/green-check.png') : ''); '</td>';
@@ -187,6 +192,7 @@ if (!is_null($data1)){
 						
 						
 						echo '<td>'.iconv('windows-1251','UTF-8', Arr::get($value, 'NAME')).'</td>';
+						echo '<td>'.HTML::anchor('/door/doorInfo/'.Arr::get($value, 'ID_DEV_DOOR'), iconv('windows-1251','UTF-8', Arr::get($value, 'DOOR_NAME', '---'))).'</td>';
 						echo '<td>'.HTML::anchor('http://' . long2ip(Arr::get($value, 'IP')), long2ip(Arr::get($value, 'IP'))).'</td>';
 						echo '<td>'.Arr::get($about, 0, '---');'</td>';
 						echo '<td>'.Arr::get($about, 2, '---');'</td>';

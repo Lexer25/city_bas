@@ -494,11 +494,133 @@ class Controller_bas extends Controller_Template {
 						
 					}
 						
-				
+				break;
+			case 'bas_setLastEvent':// 2.0.4 установка даты последнего события или выбор всего журнала событий
+					$data=Validation::factory($_POST);
+						$data->rule('id_dev', 'not_empty')
+							->rule('id_dev', 'digit');
+					
+					// признак "выбрать весь журнал событий"
+					$allLog = ($this->request->post('allevents') == '1');
+					// дата, выбранная в календаре (поле datetime-local)
+					$date = $this->request->post('lastevent_date');
+					
+					if($data->check())
+					{
+						$id_dev = intval($data['id_dev']);
+						$model_bas = Model::factory('bas');
+						
+						if($allLog)
+						{
+							// в базу данных записывается значение 1
+							$result=$model_bas->setLastEventAllLog($id_dev);
+						}
+						else
+						{
+							// выбранную дату надо сохранить в формате linux в миллисекундах
+							$ms=$this->datetimeLocalToMs($date);
+							
+							if(is_null($ms))
+							{
+								Session::instance()->set('alertErr', array(__('lastevent_err_date')));
+								$this->redirect('bas?id_dev='.$id_dev);
+							}
+							
+							if($ms > (time() * 1000))
+							{
+								// дата не может быть больше текущего времени
+								Session::instance()->set('alertErr', array(__('lastevent_err_future')));
+								$this->redirect('bas?id_dev='.$id_dev);
+							}
+							
+							$result=$model_bas->setLastEventTimestamp($id_dev, $ms);
+						}
+						
+						if($result == 0)
+						{
+							Session::instance()->set('alertOk', array(__('lastevent_save_ok')));
+							$this->redirect('bas?id_dev='.$id_dev);
+						}
+						else
+						{
+							Session::instance()->set('alertErr', array(__('sql_err_388', array('id_dev'=>$id_dev))));
+							$this->redirect('bas?id_dev='.$id_dev);
+						}
+					} else {
+						Session::instance()->set('alertErr', $data->errors('Valid_mess'));
+						$this->redirect('bas');
+					}
+						
+				break;
 			}
 		
 	}
 	
+	
+	/**2.0.4 Получить дату последнего события для указанной вызывной панели.
+	* Используется модальным окном для заполнения календаря.
+	* @input id_dev - id вызывной панели (query), по умолчанию 555
+	* @output JSON с меткой времени в миллисекундах и датой для календаря
+	*/
+	public function action_getLastEvent()
+	{
+		$this->auto_render = false;
+		
+		$id_dev = $this->request->query('id_dev');
+		if (is_null($id_dev) OR !is_numeric($id_dev)) {
+			$id_dev = Model_Bas::ID_DEV_LASTEVENT_DEFAULT;
+		}
+		$id_dev = intval($id_dev);
+		
+		$data=Model::factory('bas')->getLastEvent($id_dev);
+		
+		// метка времени в миллисекундах
+		$ms = (Arr::get($data, 'status') == 0) ? Arr::get($data, 'res') : null;
+		$ms = (is_null($ms) OR !is_numeric($ms)) ? null : (float) $ms;
+		
+		$answer = array(
+			'status'     => Arr::get($data, 'status'),
+			'id_dev'     => $id_dev,
+			'ms'         => $ms,
+			'strvalue'   => Arr::get($data, 'strvalue'),
+			'alllog'     => Arr::get($data, 'alllog') ? 1 : 0,
+			'last_event' => (is_null($ms) ? null : date('d.m.Y H:i:s', (int) ($ms / 1000))),
+			'input'      => (is_null($ms) ? '' : date('Y-m-d\TH:i:s', (int) ($ms / 1000))),
+			'max'        => date('Y-m-d\TH:i:s'),
+			'error'      => (Arr::get($data, 'status') == 0) ? '' : (string) Arr::get($data, 'res'),
+		);
+		
+		$this->response->headers('Content-Type', 'application/json; charset=utf-8');
+		$this->response->body(json_encode($answer, JSON_UNESCAPED_UNICODE));
+	}
+	
+	
+	/**2.0.4 Преобразовать значение поля datetime-local в метку времени Linux в миллисекундах.
+	* @input  $value - строка вида 2026-10-01T12:30 или 2026-10-01T12:30:45
+	* @output метка времени в миллисекундах или null, если разобрать дату не удалось
+	*/
+	private function datetimeLocalToMs($value)
+	{
+		$value = trim((string) $value);
+		if ($value === '') return null;
+		
+		// в некоторых браузерах приходит пробел вместо символа T
+		$value = str_replace('T', ' ', $value);
+		
+		if ( ! preg_match('/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})(:(\d{2}))?$/', $value, $match)) {
+			return null;
+		}
+		
+		// если секунды не указаны - считаем их нулевыми
+		if ( ! isset($match[7]) OR $match[7] === '') {
+			$value = $match[1].'-'.$match[2].'-'.$match[3].' '.$match[4].':'.$match[5].':00';
+		}
+		
+		$time = strtotime($value);
+		if ($time === false) return null;
+		
+		return $time * 1000;
+	}
 	
 }
 

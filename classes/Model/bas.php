@@ -637,6 +637,151 @@ class Model_Bas extends Model
 		
 	}
 	
+	
+	/* 2.0.4 Работа с параметром LASTEVENT (дата последнего события) вызывной панели BAS-IP.
+	 * Дата хранится в таблице bas_param в колонке STRVALUE в виде метки времени Linux в миллисекундах.
+	 * Если в STRVALUE записано 1 - это признак "выбрать весь журнал событий".
+	 */
+	const ID_DEV_LASTEVENT_DEFAULT = 555;
+	const LASTEVENT_ALL_LOG = '1';
+	
+	
+	/** Получить дату последнего события для указанной вызывной панели.
+	 * SQL: SELECT * FROM bas_param bp WHERE bp.id_dev=<id_dev> AND bp.param='LASTEVENT'
+	 * @input  $id_dev - id вызывной панели (по умолчанию 555)
+	 * @output array(
+	 *           'status'   => 0 - запрос выполнен, 1 - ошибка,
+	 *           'res'      => метка времени Linux в миллисекундах (null - значение не задано),
+	 *           'strvalue' => значение из базы данных как есть,
+	 *           'alllog'   => true, если выбран весь журнал событий (STRVALUE=1),
+	 *           'row'      => строка таблицы bas_param)
+	 */
+	public function getLastEvent($id_dev = self::ID_DEV_LASTEVENT_DEFAULT)
+	{
+		$id_dev = intval($id_dev);
+		$sql = 'SELECT * FROM bas_param bp
+			WHERE bp.id_dev='.$id_dev.'
+			AND bp.param=\'LASTEVENT\'';
+		
+		$result = array(
+			'status'   => 0,
+			'res'      => null,
+			'strvalue' => null,
+			'alllog'   => false,
+			'row'      => array(),
+		);
+		
+		try {
+			$row = DB::query(Database::SELECT, $sql)
+				->execute(Database::instance('fb'))
+				->current();
+		} catch (Exception $e) {
+			Log::instance()->add(Log::DEBUG, '#getLastEvent '.$e->getMessage().' SQL='.$sql);
+			$result['status'] = 1;
+			$result['res'] = $e->getMessage();
+			return $result;
+		}
+		
+		if (empty($row)) {
+			// для этой панели параметр LASTEVENT ещё не заведён
+			return $result;
+		}
+		
+		$strvalue = trim((string) Arr::get($row, 'STRVALUE', ''));
+		$result['strvalue'] = $strvalue;
+		$result['row'] = $row;
+		
+		if ($strvalue === self::LASTEVENT_ALL_LOG) {
+			// выбран весь журнал событий - метки времени нет
+			$result['alllog'] = true;
+			return $result;
+		}
+		
+		if ($strvalue !== '' AND is_numeric($strvalue)) {
+			// время linux в миллисекундах
+			$result['res'] = (float) $strvalue;
+		}
+		
+		return $result;
+	}
+	
+	
+	/** Записать дату последнего события (метка времени Linux в миллисекундах).
+	 * UPDATE bas_param bp SET bp.strvalue=<метка времени в миллисекундах>
+	 * WHERE bp.id_dev=<id_dev> AND bp.param='LASTEVENT'
+	 * @input  $id_dev - id вызывной панели (по умолчанию 555), $timestamp_ms - метка времени в миллисекундах
+	 * @output 0 - запись выполнена, 1 - ошибка
+	 */
+	public function setLastEventTimestamp($id_dev = self::ID_DEV_LASTEVENT_DEFAULT, $timestamp_ms = null)
+	{
+		if (is_null($timestamp_ms) OR !is_numeric($timestamp_ms)) {
+			Log::instance()->add(Log::DEBUG, '#setLastEventTimestamp неверная метка времени '.Debug::vars($timestamp_ms));
+			return 1;
+		}
+		
+		return $this->saveLastEvent($id_dev, number_format((float) $timestamp_ms, 0, '.', ''));
+	}
+	
+	
+	/** Установить признак "выбрать весь журнал событий" - в колонку STRVALUE записывается 1.
+	 * UPDATE bas_param bp SET bp.strvalue=1
+	 * WHERE bp.id_dev=<id_dev> AND bp.param='LASTEVENT'
+	 * @input  $id_dev - id вызывной панели (по умолчанию 555)
+	 * @output 0 - запись выполнена, 1 - ошибка
+	 */
+	public function setLastEventAllLog($id_dev = self::ID_DEV_LASTEVENT_DEFAULT)
+	{
+		return $this->saveLastEvent($id_dev, self::LASTEVENT_ALL_LOG);
+	}
+	
+	
+	/** Записать значение параметра LASTEVENT в таблицу bas_param.
+	 * Если строка для этой панели уже есть - выполняется UPDATE, если строки нет - INSERT.
+	 * @input  $id_dev - id вызывной панели, $strvalue - значение для колонки STRVALUE
+	 * @output 0 - запись выполнена, 1 - ошибка
+	 */
+	private function saveLastEvent($id_dev, $strvalue)
+	{
+		$id_dev = intval($id_dev);
+		$strvalue = trim((string) $strvalue);
+		$result = 0;
+		
+		$sql_select = 'SELECT id_dev FROM bas_param bp
+			WHERE bp.id_dev='.$id_dev.'
+			AND bp.param=\'LASTEVENT\'';
+		
+		try {
+			$query_select = DB::query(Database::SELECT, $sql_select)
+				->execute(Database::instance('fb'));
+			$exists = (count($query_select->as_array()) > 0);
+		} catch (Exception $e) {
+			Log::instance()->add(Log::DEBUG, '#saveLastEvent проверка строки. '.$e->getMessage().' SQL='.$sql_select);
+			return 1;
+		}
+		
+		if ($exists) {
+			$sql = 'UPDATE bas_param bp
+				SET bp.strvalue=\''.$strvalue.'\'
+				WHERE bp.id_dev='.$id_dev.'
+				AND bp.param=\'LASTEVENT\'';
+			$type = Database::UPDATE;
+		} else {
+			$sql = 'INSERT INTO bas_param (ID_DEV, PARAM, STRVALUE) VALUES ('.$id_dev.', \'LASTEVENT\', \''.$strvalue.'\')';
+			$type = Database::INSERT;
+		}
+		
+		try {
+			DB::query($type, $sql)
+				->execute(Database::instance('fb'));
+			$result = 0;
+		} catch (Exception $e) {
+			Log::instance()->add(Log::DEBUG, '#saveLastEvent ошибка записи. '.$e->getMessage().' SQL='.$sql);
+			$result = 1;
+		}
+		
+		return $result;
+	}
+	
 }
 
 

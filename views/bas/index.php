@@ -1,4 +1,73 @@
+<style>
+/* 2.0.4 модальное окно стало выше (добавлена дата последнего события) -
+   ограничиваю высоту диалога и включаю вертикальную прокрутку. */
+.modalm-dialog {
+	max-height: 80vh;
+	overflow-y: auto;
+}
+.modalm-open:checked ~ .modalm-wrap .modalm-dialog {
+	top: 10%;
+}
+</style>
 <script>
+//https://learn.javascript.ru/function-object
+
+/* 2.0.4 Текущее время в формате поля datetime-local (YYYY-MM-DDTHH:MM:SS) */
+function nowLocalInput() {
+	var d = new Date();
+	var p = function(n) { return (n < 10 ? '0' : '') + n; };
+	return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+		+ 'T' + p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+}
+
+/* 2.0.4 Переключение доступности календаря.
+   Если установлен чек-бокс "Выбрать весь журнал событий", дата не нужна. */
+function setLastEventState(allLog) {
+	$('#lastevent_picker').prop('disabled', allLog);
+	$('#lastevent_picker').prop('required', !allLog);
+}
+
+/* 2.0.4 Заполнение блока "Дата последнего события" модального окна.
+   Данные берутся из строки таблицы, а затем уточняются запросом к модели
+   (таблица bas_param, param='LASTEVENT', значение - метка времени linux в миллисекундах). */
+function fillLastEvent(btn, id_dev) {
+	var picker = $('#lastevent_picker');
+	var allLog = (btn.attr('lastevent_alllog') == '1');
+	var input  = btn.attr('lastevent_input') || '';
+	var human  = btn.attr('lastevent_human') || '';
+
+	$('#id_dev_lastevent').val(id_dev);
+	$('#lastevent_current').text(human ? human : 'нет данных');
+	picker.val(input);
+	picker.attr('max', nowLocalInput());
+	$('#allevents').prop('checked', allLog);
+	setLastEventState(allLog);
+
+	$.ajax({
+		url: '<?php echo URL::site('bas/getLastEvent'); ?>',
+		data: { id_dev: id_dev },
+		dataType: 'json',
+		cache: false
+	}).done(function(data) {
+		if (data && data.status == 0) {
+			picker.attr('max', data.max ? data.max : nowLocalInput());
+			if (data.alllog == 1) {
+				$('#lastevent_current').text('<?php echo __('lastevent_all_short'); ?>');
+				picker.val('');
+			} else {
+				$('#lastevent_current').text(data.last_event ? data.last_event : 'нет данных');
+				picker.val(data.input || '');
+			}
+			$('#allevents').prop('checked', data.alllog == 1);
+			setLastEventState(data.alllog == 1);
+		} else {
+			$('#lastevent_current').text('<?php echo __('lastevent_get_error'); ?>');
+		}
+	}).fail(function() {
+		$('#lastevent_current').text('<?php echo __('lastevent_get_error'); ?>');
+	});
+}
+
 //https://learn.javascript.ru/function-object
 $(function() {
 	$(".btn").click(
@@ -16,8 +85,42 @@ $(function() {
 			document.getElementById("ipp").value     = $(this).attr('ip_dev');
 			document.getElementById("login1").value  = $(this).attr('login');
 			document.getElementById("pass1").value   = $(this).attr('pass');
+
+			// 2.0.4 дата последнего события для панели, для которой открыто модальное окно
+			fillLastEvent($(this), $(this).attr('org_id'));
 		}
 	);
+
+	// 2.0.4 чек-бокс "Выбрать весь журнал событий"
+	$('#allevents').change(function() {
+		setLastEventState($(this).prop('checked'));
+	});
+
+	// 2.0.4 проверка выбранной даты перед отправкой на сервер
+	$('#lastevent_form').submit(function() {
+		if ($('#allevents').prop('checked')) {
+			// выбран весь журнал событий - дату проверять не надо
+			return true;
+		}
+
+		var value = $('#lastevent_picker').val();
+		if (!value) {
+			alert('<?php echo __('lastevent_err_date'); ?>');
+			return false;
+		}
+
+		var m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+		if (m) {
+			var chosen = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], 0);
+			if (chosen.getTime() > (new Date()).getTime()) {
+				// дата не может быть больше текущего времени
+				alert('<?php echo __('lastevent_err_future'); ?>');
+				return false;
+			}
+		}
+
+		return true;
+	});
 });
 
 $(function() {
@@ -175,6 +278,11 @@ if (!is_null($data1)){
 					}
 					$about=array();
 					$about=explode(",", Arr::get($value, 'ABOUT'));	
+					
+					//2.0.4 параметр LASTEVENT: метка времени linux в миллисекундах или 1 - выбран весь журнал событий
+					$lastEventValue=trim((string) Arr::get($value, 'LASTEVENT', ''));
+					$lastEventAllLog=($lastEventValue === '1');
+					$lastEventMs=($lastEventValue === '' OR !is_numeric($lastEventValue)) ? null : (float) $lastEventValue;
 
 					echo '<tr class="'.Arr::get($statusColor, $status).'">';
 						echo '<td >'.++$npp. '</td>';
@@ -199,7 +307,19 @@ if (!is_null($data1)){
 						echo '<td>'.Arr::get($about, 4, '---');'</td>';
 						echo '<td>';
 							
-							echo (is_null(Arr::get($value, 'LASTEVENT')))? '-' : date ('d.m.Y H:i:s', Arr::get($value, 'LASTEVENT', 0)/1000);
+							//2.0.4 вывод даты последнего события
+							if($lastEventAllLog)
+							{
+								echo __('lastevent_all_short');
+							}
+							elseif(is_null($lastEventMs))
+							{
+								echo '-';
+							}
+							else
+							{
+								echo date ('d.m.Y H:i:s', (int) ($lastEventMs/1000));
+							}
 							echo '</td>';
 							if(Arr::get($value, 'INSERTTIME'))
 							{	
@@ -214,6 +334,10 @@ if (!is_null($data1)){
 							ip_dev="'.long2ip(Arr::get($value, 'IP', 0)).'"
 							login="'.(Arr::get($value, 'LOGIN', 0)).'"
 							pass="'.(Arr::get($value, 'PASS', 0)).'"
+							lastevent="'.$lastEventValue.'"
+							lastevent_alllog="'.($lastEventAllLog ? 1 : 0).'"
+							lastevent_input="'.(is_null($lastEventMs) ? '' : date('Y-m-d\TH:i:s', (int) ($lastEventMs/1000))).'"
+							lastevent_human="'.($lastEventAllLog ? __('lastevent_all_short') : (is_null($lastEventMs) ? '' : date('d.m.Y H:i:s', (int) ($lastEventMs/1000)))).'"
 							>Редактировать</label></td>';
 							
 						
@@ -297,6 +421,24 @@ echo '<br>';
 			</form> 
 			
 			Допустимые символы A-Z a-z 0-9 !@#$%^&*()_-+=[]{};:'",.<>/?\|~)
+			
+			<hr>
+			<h2><?php echo __('lastevent');?></h2>
+			<form id="lastevent_form" action="bas/update" method="post">
+					<?php echo __('lastevent_current');?>: <b id="lastevent_current">нет данных</b>
+					<h4></h4>
+					<?php echo __('lastevent_new');?>: 
+					<input type="datetime-local" id="lastevent_picker" name="lastevent_date" step="1" max="<?php echo date('Y-m-d\TH:i:s');?>">
+					<br>
+					<label>
+						<input type="checkbox" id="allevents" name="allevents" value="1">
+						<?php echo __('lastevent_all');?>
+					</label>
+					<h4></h4>
+					<input type="hidden" name="id_dev" id="id_dev_lastevent" >
+					<input type="hidden" name="todo" value="bas_setLastEvent" >
+					<input type="submit" name="submit" value="<?php echo __('lastevent_save');?>">
+			</form>
 			</div>
 			<div class="modalm-footer">
 				<h4>Редактирование свойств панели bas-IP</h4>

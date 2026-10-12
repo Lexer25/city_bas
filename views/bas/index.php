@@ -1,12 +1,36 @@
 <style>
-/* 2.0.4 модальное окно стало выше (добавлена дата последнего события) -
-   ограничиваю высоту диалога и включаю вертикальную прокрутку. */
-.modalm-dialog {
-	max-height: 80vh;
+/* 2.0.5 модальное окно на Bootstrap: в нём несколько форм, поэтому телу окна
+   нужна ограниченная высота и вертикальная прокрутка. */
+#basModal .modal-body {
+	max-height: 70vh;
 	overflow-y: auto;
 }
-.modalm-open:checked ~ .modalm-wrap .modalm-dialog {
-	top: 10%;
+/* название панели в окне не должно быть размером h1 */
+#basModal .kartka h1 {
+	font-size: 18px;
+	margin: 0 0 5px;
+}
+#basModal .kartka h2 {
+	font-size: 16px;
+	margin: 0;
+}
+/* отступ содержимого вкладок от самих вкладок */
+#basModal .tab-content {
+	padding-top: 15px;
+}
+/* 2.0.5 Исправление конфликта с проектным (сборным) bootstrap.min.css.
+   Там .modal-dialog задан как {z-index:1050; width:auto; padding:10px; ...} БЕЗ position,
+   поэтому z-index не действует и .modal-backdrop (z-index:1030), который bootstrap.min.js
+   вставляет внутрь .modal, рисуется ПОВЕРХ окна: окно видно "под серой вуалью", а клик
+   в любом месте попадает по вуали. Возвращаю позиционирование и поднимаю диалог над вуалью.
+   left/right обнуляю: в проектном CSS для >=768px задано left:50% (рассчитано на другую
+   разметку) - при position:relative оно сдвинуло бы окно вправо. Центрирование остаётся
+   за margin-left/right:auto из bootstrap.min.css. */
+#basModal .modal-dialog {
+	position: relative;
+	z-index: 1060;
+	left: auto;
+	right: auto;
 }
 </style>
 <script>
@@ -70,7 +94,9 @@ function fillLastEvent(btn, id_dev) {
 
 //https://learn.javascript.ru/function-object
 $(function() {
-	$(".btn").click(
+	// 2.0.5 обработчик вешается на кнопку строки таблицы (.popup-contact), а не на все .btn:
+	// иначе нажатие Bootstrap-кнопок внутри модального окна сбрасывало бы заполненные поля.
+	$(".popup-contact").click(
 		function() {
 			var bname   = $(this).attr('org_name');
 			var bprice  = $(this).attr('org_id');
@@ -85,6 +111,13 @@ $(function() {
 			document.getElementById("ipp").value     = $(this).attr('ip_dev');
 			document.getElementById("login1").value  = $(this).attr('login');
 			document.getElementById("pass1").value   = $(this).attr('pass');
+
+			// 2.0.5 название контроллера и его точки прохода (по данным строки таблицы)
+			$('#bas_ctrl_name').text(bname || '---');
+			$('#bas_ctrl_id_dev').text($(this).attr('org_id') || '---');
+			$('#bas_door_name').text($(this).attr('door_name') || '---');
+			$('#bas_door_id_dev').text($(this).attr('door_id_dev') || '---');
+			$('#bas_door_link').attr('href', '/door/doorInfo/' + ($(this).attr('door_id_dev') || ''));
 
 			// 2.0.4 дата последнего события для панели, для которой открыто модальное окно
 			fillLastEvent($(this), $(this).attr('org_id'));
@@ -282,7 +315,7 @@ if (!is_null($data1)){
 					//2.0.4 параметр LASTEVENT: метка времени linux в миллисекундах или 1 - выбран весь журнал событий
 					$lastEventValue=trim((string) Arr::get($value, 'LASTEVENT', ''));
 					$lastEventAllLog=($lastEventValue === '1');
-					$lastEventMs=($lastEventValue === '' OR !is_numeric($lastEventValue)) ? null : (float) $lastEventValue;
+					$lastEventMs=($lastEventAllLog OR $lastEventValue === '' OR !is_numeric($lastEventValue)) ? null : (float) $lastEventValue;
 
 					echo '<tr class="'.Arr::get($statusColor, $status).'">';
 						echo '<td >'.++$npp. '</td>';
@@ -327,10 +360,13 @@ if (!is_null($data1)){
 							} else {
 								echo '<td>Нет данных.</td>';
 							}
-						echo '<td>'.'<label class="btn btn-line dark btn-xs popup-contact" for="modalm-1" 
+						echo '<td>'.'<label class="btn btn-line dark btn-xs popup-contact" 
+							data-toggle="modal" data-target="#basModal"
 							org_name="'. iconv('windows-1251','UTF-8',Arr::get($value, 'NAME')).'" 
 							org_id="'.Arr::get($value, 'ID_DEV', -1).'"
 							org_id1="'.Arr::get($value, 'ID_DEV', -1).'"
+							door_name="'.iconv('windows-1251','UTF-8',Arr::get($value, 'DOOR_NAME', '')).'"
+							door_id_dev="'.Arr::get($value, 'ID_DEV_DOOR', '').'"
 							ip_dev="'.long2ip(Arr::get($value, 'IP', 0)).'"
 							login="'.(Arr::get($value, 'LOGIN', 0)).'"
 							pass="'.(Arr::get($value, 'PASS', 0)).'"
@@ -367,87 +403,100 @@ echo '<br>';
 
 
 
-<div class="modalm">
-
-
-	<div class="panel-body">
-	<input class="modalm-open" id="modalm-1" type="checkbox" hidden>
-	<div class="modalm-wrap" aria-hidden="true" role="dialog">
-		
-		<div class="modalm-dialog">
-			<div class="modalm-header">
-				<h2>Редактирование параметров панели bas-ip</h2>
-				<label class="btnm-close" for="modalm-1" aria-hidden="true">x</label>
+<!-- 2.0.5 модальное окно на Bootstrap Modal (bootstrap.min.js из общего шаблона) -->
+<div class="modal fade" id="basModal" tabindex="-1" role="dialog" aria-labelledby="basModalLabel" data-backdrop="static">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal" aria-label="Закрыть"><span aria-hidden="true">&times;</span></button>
+				<h4 class="modal-title" id="basModalLabel"><span class="glyphicon glyphicon-cog"></span> Редактирование параметров панели bas-ip</h4>
 			</div>
-			<div class="modalm-body">
-			<h2>Укажите IP адрес для панели</h2>
-			
-				<div class="row">
+			<div class="modal-body">
+
+				<div class="well well-sm">
 					<div class="kartka">
 					  <h1></h1>
-					  с адресом  
+					  с адресом
 					  <h2></h2>
-					  
-					  </div>
-			</div>
-			
-			<?php
- /*			echo Debug::vars('134', $deviceList);
-			$patter_IP='^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$';// шаблон IP адреса
-			 */
-			?>
-			
-			<form action="bas/update" method="post" enctype="multipart/form-data">
-					Изменения IP
-					<h4></h4>
-					<input type="input" name="new_IP" id="ipp" pattern="^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$" >
-					<input type="hidden" name="id_dev" id="id_org1" >
-					<input type="hidden" name="todo" value="bas_changeIP2" >
-					<input type="submit" name="submit" value="Новый IP адрес">
-			</form> 
-			 <br>
-			  
-			<form action="bas/update" method="post" enctype="multipart/form-data">	 
-					Изменения Логина и Пароля
-					<h4></h4>
-				 Логин <input type="text" name="login" id="login1" placeholder="Логин">
-				 <h4></h4>
-				 Пароль <input type="password" name="password" id="pass1" placeholder="Пароль">
+					</div>
+					<?php /* 2.0.5 контроллер, в который входит точка прохода (данные из строки таблицы) */ ?>
+					<div>
+						<strong><?php echo __('bas_controller');?>:</strong>
+						<span id="bas_ctrl_name">---</span>
+						<span class="text-muted">(id_dev <span id="bas_ctrl_id_dev">---</span>)</span>
+					</div>
+					<div>
+						<strong><?php echo __('bas_door_point');?>:</strong>
+						<a id="bas_door_link" href="#"><span id="bas_door_name">---</span></a>
+						<span class="text-muted">(id_dev <span id="bas_door_id_dev">---</span>)</span>
+					</div>
+				</div>
 
-				 <input type="hidden" name="id_dev" id="id_org2" >
-				 <input type="hidden" name="todo" value="bas_changeLogin" >
-				 <input type="submit" name="submit" value="Новый Логин и Пароль">
-				
-			</form> 
-			
-			Допустимые символы A-Z a-z 0-9 !@#$%^&*()_-+=[]{};:'",.<>/?\|~)
-			
-			<hr>
-			<h2><?php echo __('lastevent');?></h2>
-			<form id="lastevent_form" action="bas/update" method="post">
-					<?php echo __('lastevent_current');?>: <b id="lastevent_current">нет данных</b>
-					<h4></h4>
-					<?php echo __('lastevent_new');?>: 
-					<input type="datetime-local" id="lastevent_picker" name="lastevent_date" step="1" max="<?php echo date('Y-m-d\TH:i:s');?>">
-					<br>
-					<label>
-						<input type="checkbox" id="allevents" name="allevents" value="1">
-						<?php echo __('lastevent_all');?>
-					</label>
-					<h4></h4>
-					<input type="hidden" name="id_dev" id="id_dev_lastevent" >
-					<input type="hidden" name="todo" value="bas_setLastEvent" >
-					<input type="submit" name="submit" value="<?php echo __('lastevent_save');?>">
-			</form>
+				<ul class="nav nav-tabs" role="tablist">
+					<li role="presentation" class="active"><a href="#basTabIP" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-globe"></span> IP адрес</a></li>
+					<li role="presentation"><a href="#basTabAuth" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-lock"></span> Логин и пароль</a></li>
+					<li role="presentation"><a href="#basTabLastEvent" role="tab" data-toggle="tab"><span class="glyphicon glyphicon-time"></span> <?php echo __('lastevent');?></a></li>
+				</ul>
+
+				<div class="tab-content">
+
+					<div role="tabpanel" class="tab-pane active" id="basTabIP">
+						<form action="bas/update" method="post" enctype="multipart/form-data">
+							<div class="form-group">
+								<label for="ipp">Новый IP адрес панели</label>
+								<input type="text" class="form-control" name="new_IP" id="ipp" placeholder="10.200.20.2" pattern="^(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$">
+							</div>
+							<input type="hidden" name="id_dev" id="id_org1">
+							<input type="hidden" name="todo" value="bas_changeIP2">
+							<button type="submit" name="submit" class="btn btn-primary"><span class="glyphicon glyphicon-floppy-disk"></span> Сохранить IP адрес</button>
+						</form>
+					</div>
+
+					<div role="tabpanel" class="tab-pane" id="basTabAuth">
+						<form action="bas/update" method="post" enctype="multipart/form-data">
+							<div class="form-group">
+								<label for="login1">Логин</label>
+								<input type="text" class="form-control" name="login" id="login1" placeholder="Логин">
+							</div>
+							<div class="form-group">
+								<label for="pass1">Пароль</label>
+								<input type="password" class="form-control" name="password" id="pass1" placeholder="Пароль">
+							</div>
+							<p class="help-block">Допустимые символы A-Z a-z 0-9 !@#$%^&amp;*()_-+=[]{};:'",.&lt;&gt;/?\|~)</p>
+							<input type="hidden" name="id_dev" id="id_org2">
+							<input type="hidden" name="todo" value="bas_changeLogin">
+							<button type="submit" name="submit" class="btn btn-primary"><span class="glyphicon glyphicon-floppy-disk"></span> Сохранить логин и пароль</button>
+						</form>
+					</div>
+
+					<div role="tabpanel" class="tab-pane" id="basTabLastEvent">
+						<form id="lastevent_form" action="bas/update" method="post">
+							<p><?php echo __('lastevent_current');?>: <b id="lastevent_current">нет данных</b></p>
+							<div class="form-group">
+								<label for="lastevent_picker"><?php echo __('lastevent_new');?></label>
+								<input type="datetime-local" class="form-control" id="lastevent_picker" name="lastevent_date" step="1" max="<?php echo date('Y-m-d\TH:i:s');?>">
+							</div>
+							<div class="checkbox">
+								<label>
+									<input type="checkbox" id="allevents" name="allevents" value="1">
+									<?php echo __('lastevent_all');?>
+								</label>
+							</div>
+							<input type="hidden" name="id_dev" id="id_dev_lastevent">
+							<input type="hidden" name="todo" value="bas_setLastEvent">
+							<button type="submit" name="submit" class="btn btn-primary"><span class="glyphicon glyphicon-floppy-disk"></span> <?php echo __('lastevent_save');?></button>
+						</form>
+					</div>
+
+				</div>
+
 			</div>
-			<div class="modalm-footer">
-				<h4>Редактирование свойств панели bas-IP</h4>
-				
+			<div class="modal-footer">
+				<span class="pull-left text-muted">Редактирование свойств панели bas-IP</span>
+				<button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>
 			</div>
 		</div>
 	</div>
-	</div>
-
 </div>
 
 

@@ -16,6 +16,8 @@ return array(
 		'lastevent_get_error'=>'ошибка получения данных',
 		'lastevent_err_date'=>'Укажите дату последнего события',
 		'lastevent_err_future'=>'Дата последнего события не может быть больше текущего времени',
+		'bas_controller'=>'Контроллер',
+		'bas_door_point'=>'Точка прохода',
 		
 		
 );
